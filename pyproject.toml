@@ -1,0 +1,17 @@
+[project]
+name = "viewport_export"
+version = "1.0.0"
+description = "Export the current viewport as JPG at 1080p, 4K, or 8K resolution"
+author = "Jacob van Beets"
+
+dependencies = [
+    "Pillow",
+    "numpy",
+]
+
+[tool.lichtfeld]
+auto_start = true
+hot_reload = true
+plugin_api = ">=1,<2"
+lichtfeld_version = ">=0.5.1"
+required_features = []
