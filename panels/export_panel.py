@@ -23,6 +23,8 @@ RESOLUTIONS = [
     ("1080p",    1080),
     ("4K",       2160),
     ("8K",       4320),
+    ("12K",      6480),
+    ("16K",      8640),
 ]
 FORMATS = ["JPG", "PNG"]
 _SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
