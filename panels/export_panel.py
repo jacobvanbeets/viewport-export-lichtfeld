@@ -18,13 +18,18 @@ def _parse_version(v: str) -> tuple:
 
 Y_UP = _parse_version(lf.__version__) >= (0, 5, 1)
 
+# (label, height, approx VRAM usage for 16:9 in MB)
 RESOLUTIONS = [
-    ("Viewport", None),
-    ("1080p",    1080),
-    ("4K",       2160),
-    ("8K",       4320),
-    ("12K",      6480),
-    ("16K",      8640),
+    ("Viewport",                None,  None),
+    ("1080p  (~25 MB VRAM)",    1080,    25),
+    ("4K     (~100 MB VRAM)",   2160,   100),
+    ("8K     (~400 MB VRAM)",   4320,   400),
+    ("12K    (~900 MB VRAM)",   6480,   900),
+    ("16K   (~1.6 GB VRAM)",    8640,  1600),
+    ("20K   (~2.5 GB VRAM)",   10800,  2500),
+    ("24K   (~3.6 GB VRAM)",   12960,  3600),
+    ("28K   (~4.9 GB VRAM)",   15120,  4900),
+    ("32K   (~6.4 GB VRAM)",   17280,  6400),
 ]
 FORMATS = ["JPG", "PNG"]
 _SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -254,7 +259,7 @@ class ViewportExportPanel(lf.ui.Panel):
         changed, new_idx = ui.combo("##vp_resolution", self._resolution_idx, labels)
         if changed:
             self._resolution_idx = new_idx
-        _, target_h = RESOLUTIONS[self._resolution_idx]
+        _, target_h, vram_mb = RESOLUTIONS[self._resolution_idx]
         if target_h:
             ui.text_disabled(f"Height: {target_h} px (width from viewport aspect ratio)")
         else:
@@ -305,7 +310,7 @@ class ViewportExportPanel(lf.ui.Panel):
 
     def _do_export(self):
         is_png = self._format_idx == 1
-        _, target_h = RESOLUTIONS[self._resolution_idx]
+        _, target_h, _ = RESOLUTIONS[self._resolution_idx]
         default_name = "viewport_export.png" if is_png else "viewport_export.jpg"
 
         if is_png:
