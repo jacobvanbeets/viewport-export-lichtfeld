@@ -4,9 +4,9 @@ Export the current viewport as a **JPG** or **PNG** image with optional **RGBA t
 
 ## Features
 
-- Captures exactly what you see in the viewer
+- **Native high-res rendering**: 1080p, 4K, 8K, 12K, and 16K exports are true re-renders via `render_view`, not upscaled screenshots
 - **Format support**: JPG (adjustable quality) and PNG (adjustable compression)
-- **Resolution presets**: Viewport (native), 1080p, 4K, 8K — height-based, preserves viewport aspect ratio
+- **Resolution presets**: Viewport (native capture), 1080p, 4K, 8K, 12K, 16K — height-based, preserves viewport aspect ratio
 - **RGBA transparency**: PNG export with BW2A (Black/White to Alpha) — automatically captures against black and white backgrounds to recover a clean alpha channel
 - Version-aware Y-axis handling (LichtFeld ≥ 0.5.1)
 
