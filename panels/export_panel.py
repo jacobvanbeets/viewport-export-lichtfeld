@@ -19,6 +19,7 @@ def _parse_version(v: str) -> tuple:
 Y_UP = _parse_version(lf.__version__) >= (0, 5, 1)
 
 # (label, height, approx VRAM usage for 16:9 in MB)
+# height == -1 is a sentinel meaning "user-defined custom WxH"
 RESOLUTIONS = [
     ("Viewport",                None,  None),
     ("1080p  (~25 MB VRAM)",    1080,    25),
@@ -30,6 +31,7 @@ RESOLUTIONS = [
     ("24K   (~5.6 GB VRAM)",   12960,  3600),
     ("28K   (~6.9 GB VRAM)",   15120,  4900),
     ("32K   (~9.4 GB VRAM)",   17280,  6400),
+    ("Custom",                    -1,  None),
 ]
 FORMATS = ["JPG", "PNG"]
 _SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -91,18 +93,19 @@ def _resize(img, target_h):
     return img
 
 
-def _render_native(target_h):
-    """Re-render the current viewport at *target_h* height using render_view.
+def _render_native(target_h, target_w=None):
+    """Re-render the current viewport at the given resolution using render_view.
 
     Returns a PIL Image at the requested resolution, or None on failure.
-    Width is computed from the viewport's aspect ratio.
+    If *target_w* is None, width is computed from the viewport's aspect ratio.
     """
     view = lf.get_current_view()
     if view is None:
         return None
 
-    aspect = view.width / max(1, view.height)
-    target_w = max(1, round(target_h * aspect))
+    if target_w is None:
+        aspect = view.width / max(1, view.height)
+        target_w = max(1, round(target_h * aspect))
 
     # render_view now accepts c2w rotation + eye position directly
     tensor = lf.render_view(
@@ -157,6 +160,10 @@ class ViewportExportPanel(lf.ui.Panel):
         self._status = ""
         self._status_color = (1.0, 1.0, 1.0, 1.0)
 
+        # Custom resolution state
+        self._custom_width = 1920
+        self._custom_height = 1080
+
         # Multi-frame BW2A state
         self._bw2a_state = {
             "step": 0,
@@ -165,6 +172,7 @@ class ViewportExportPanel(lf.ui.Panel):
             "orig_bg": None,
             "out_path": None,
             "target_h": None,
+            "target_w": None,
         }
 
     def _register_draw_handler(self):
@@ -227,7 +235,13 @@ class ViewportExportPanel(lf.ui.Panel):
                 Image.fromarray(s["white"], "RGB").save(white_path, "PNG")
                 _bw2a(black_path, white_path, out_path)
 
-                if s["target_h"]:
+                if s["target_h"] and s["target_w"]:
+                    # Custom resolution: resize to exact WxH
+                    img = Image.open(out_path).resize(
+                        (s["target_w"], s["target_h"]), Image.LANCZOS
+                    )
+                    img.save(out_path, "PNG")
+                elif s["target_h"]:
                     img = _resize(Image.open(out_path), s["target_h"])
                     img.save(out_path, "PNG")
 
@@ -260,7 +274,18 @@ class ViewportExportPanel(lf.ui.Panel):
         if changed:
             self._resolution_idx = new_idx
         _, target_h, vram_mb = RESOLUTIONS[self._resolution_idx]
-        if target_h:
+        is_custom = target_h == -1
+        if is_custom:
+            ui.label("Width (px):")
+            changed, val = ui.input_int("##custom_w", self._custom_width)
+            if changed:
+                self._custom_width = max(1, val)
+            ui.label("Height (px):")
+            changed, val = ui.input_int("##custom_h", self._custom_height)
+            if changed:
+                self._custom_height = max(1, val)
+            ui.text_disabled(f"{self._custom_width} × {self._custom_height} px")
+        elif target_h:
             ui.text_disabled(f"Height: {target_h} px (width from viewport aspect ratio)")
         else:
             ui.text_disabled("Native viewport resolution")
@@ -311,6 +336,12 @@ class ViewportExportPanel(lf.ui.Panel):
     def _do_export(self):
         is_png = self._format_idx == 1
         _, target_h, _ = RESOLUTIONS[self._resolution_idx]
+        is_custom = target_h == -1
+        if is_custom:
+            target_h = self._custom_height
+            custom_w = self._custom_width
+        else:
+            custom_w = None
         default_name = "viewport_export.png" if is_png else "viewport_export.jpg"
 
         if is_png:
@@ -335,6 +366,7 @@ class ViewportExportPanel(lf.ui.Panel):
                 "orig_bg": None,
                 "out_path": path,
                 "target_h": target_h,
+                "target_w": custom_w,
             })
             self._set_status("Starting BW2A capture...", warning=True)
             self._register_draw_handler()
@@ -344,8 +376,9 @@ class ViewportExportPanel(lf.ui.Panel):
             try:
                 if target_h:
                     # Native high-res render via render_view
-                    self._set_status(f"Rendering {target_h}p...", warning=True)
-                    img = _render_native(target_h)
+                    label = f"{custom_w}×{target_h}" if custom_w else f"{target_h}p"
+                    self._set_status(f"Rendering {label}...", warning=True)
+                    img = _render_native(target_h, target_w=custom_w)
                     if img is None:
                         self._set_status("Render failed — is a scene loaded?", error=True)
                         return
