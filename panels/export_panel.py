@@ -25,11 +25,11 @@ RESOLUTIONS = [
     ("4K     (~100 MB VRAM)",   2160,   100),
     ("8K     (~400 MB VRAM)",   4320,   400),
     ("12K    (~900 MB VRAM)",   6480,   900),
-    ("16K   (~1.6 GB VRAM)",    8640,  1600),
-    ("20K   (~2.5 GB VRAM)",   10800,  2500),
-    ("24K   (~3.6 GB VRAM)",   12960,  3600),
-    ("28K   (~4.9 GB VRAM)",   15120,  4900),
-    ("32K   (~6.4 GB VRAM)",   17280,  6400),
+    ("16K   (~2.6 GB VRAM)",    8640,  1600),
+    ("20K   (~4.5 GB VRAM)",   10800,  2500),
+    ("24K   (~5.6 GB VRAM)",   12960,  3600),
+    ("28K   (~6.9 GB VRAM)",   15120,  4900),
+    ("32K   (~9.4 GB VRAM)",   17280,  6400),
 ]
 FORMATS = ["JPG", "PNG"]
 _SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
