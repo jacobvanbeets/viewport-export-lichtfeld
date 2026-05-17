@@ -84,6 +84,34 @@ def _resize(img, target_h):
     return img
 
 
+def _render_native(target_h):
+    """Re-render the current viewport at *target_h* height using render_view.
+
+    Returns a PIL Image at the requested resolution, or None on failure.
+    Width is computed from the viewport's aspect ratio.
+    """
+    view = lf.get_current_view()
+    if view is None:
+        return None
+
+    aspect = view.width / max(1, view.height)
+    target_w = max(1, round(target_h * aspect))
+
+    # render_view now accepts c2w rotation + eye position directly
+    tensor = lf.render_view(
+        view.rotation,
+        view.translation,
+        target_w,
+        target_h,
+        fov=view.fov_y,
+    )
+    if tensor is None:
+        return None
+
+    arr = np.asarray(tensor.cpu().contiguous(), dtype=np.float32)
+    return _arr_to_image(arr)
+
+
 def _bw2a(black_path, white_path, out_path):
     """BW2A: recover RGBA from a black-bg / white-bg capture pair."""
     img_black = np.array(Image.open(black_path).convert("RGB")).astype(float)
@@ -307,21 +335,30 @@ class ViewportExportPanel(lf.ui.Panel):
         else:
             # ── Normal single capture ─────────────────────────────────────
             try:
-                self._set_status("Capturing...", warning=True)
-                arr = _capture_arr()
-                if arr is None:
-                    self._set_status("Capture failed.", error=True)
-                    return
-                img = _arr_to_image(arr)
                 if target_h:
-                    img = _resize(img, target_h)
+                    # Native high-res render via render_view
+                    self._set_status(f"Rendering {target_h}p...", warning=True)
+                    img = _render_native(target_h)
+                    if img is None:
+                        self._set_status("Render failed — is a scene loaded?", error=True)
+                        return
+                else:
+                    # Viewport resolution — capture directly
+                    self._set_status("Capturing...", warning=True)
+                    arr = _capture_arr()
+                    if arr is None:
+                        self._set_status("Capture failed.", error=True)
+                        return
+                    img = _arr_to_image(arr)
+
+                w, h = img.size
                 if is_png:
                     img.save(path, "PNG", compress_level=self._png_compress)
                 else:
                     img.save(path, "JPEG", quality=self._quality)
 
-                self._set_status(f"Saved: {path}", success=True)
-                lf.log.info(f"[ViewportExport] done: {path}")
+                self._set_status(f"Saved {w}×{h}: {path}", success=True)
+                lf.log.info(f"[ViewportExport] done {w}x{h}: {path}")
 
             except Exception as e:
                 self._set_status(f"Error: {e}", error=True)
